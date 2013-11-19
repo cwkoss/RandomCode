@@ -50,9 +50,25 @@ def q3():
         fin += string[i * 8: (i + 1) * 8]
     return fin
 
-print q3()
+#print q3()
 # result : 00000000005923C3B356E155C7E450A488BBB0C4A6DF187820954E1C35436D61
 
+def q4():
+    sh_per_s = 100/q1b() * 1000
+    print "avg shares per ms: " + str(sh_per_s / 1000)
+    print "avg shares per s: " + str(sh_per_s)
+    # sh_per_s = diff * 2^32 / hashrate
+    # hashrate = diff * 2^32 / sh_per_s
+    hashrate = 256 * 2 ** 32 / sh_per_s
+    print "hashrate is : " + str(hashrate)
+    return "Mh/s is : " + str(hashrate / 10 ** 6)
+    
+#print q4()
+"""
+result: 
+hashrate is : 1224614506.66
+Mh/s is : 1224.61450666
+"""
 
 """
 with open('trunc_log.json', 'r') as f:  
