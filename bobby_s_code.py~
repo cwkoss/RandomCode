@@ -41,7 +41,7 @@ def main():
 
 def read_parse_file(filename):
     # read the whole file, and split it on newlines
-    list_of_strings = open(filename).read().split('\n')
+    list_of_strings = open('trunc_log.jaysun').read().split('\n')
 
     """
     for each string in the list of strings do one of two things
