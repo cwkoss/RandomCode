@@ -28,7 +28,14 @@ def q1c():
 #print q1c()
 
 def q2():
-    a = [0,0,0,0]
+    board_id_max = -1
+    with open('trunc_log.json', 'r') as f:  
+        for line in f:  
+            j = json.loads(line)
+            board_id_max = max(j['board_id'], board_id_max)
+                
+    a = [0] * (board_id_max + 1)
+
     with open('trunc_log.json', 'r') as f:  
         for line in f:  
             j = json.loads(line)
@@ -54,7 +61,12 @@ def q3():
 # result : 00000000005923C3B356E155C7E450A488BBB0C4A6DF187820954E1C35436D61
 
 def q4():
-    sh_per_s = 100/q1b() * 1000
+    tot = 0
+    with open('trunc_log.json', 'r') as f:  
+        for line in f:  
+            tot += 1
+
+    sh_per_s = tot/q1b() * 1000
     print "avg shares per ms: " + str(sh_per_s / 1000)
     print "avg shares per s: " + str(sh_per_s)
     # sh_per_s = diff * 2^32 / hashrate
