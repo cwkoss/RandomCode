@@ -1,0 +1,109 @@
+import json
+
+CHRIS_Q3_ANSWER = "00000000005923C3B356E155C7E450A488BBB0C4A6DF187820954E1C35436D61"
+
+
+def main():
+    objs = read_parse_file('trunc_log.jaysun')
+
+    print "1a: %f" % q1a(objs)
+
+    print "1a (3 decimal places only): %.3f" % q1a(objs)
+
+    print ""
+
+    print "1b: %f" % q1b(objs)
+
+    print ""
+
+    print "1c: %f" % q1c(objs)
+
+    # If a fn returns two values you can accept them into two different variables like this:
+    # If the fn only returns one value it will raise an exception
+    winning_board, count = q2(objs)
+    print "q2, board %d wins with %d shares" % (winning_board, count)
+
+    # If it returns two vars and you only accept 1, it returns them as a tuple (an immutable list)
+    print "shorthand print for q2: board %d wins with %d shares" % q2(objs)
+
+    print ""
+
+    original_hash, reversed_words_hash = q3(objs)
+
+    print "q3 original: %s" % original_hash
+    print "q3 reversed: %s" % reversed_words_hash
+
+    if CHRIS_Q3_ANSWER == reversed_words_hash:
+        print "Chris q3 was right!"
+    else:
+        print "Chris q3 was wrong!"
+
+
+def read_parse_file(filename):
+    # read the whole file, and split it on newlines
+    list_of_strings = open('trunc_log.jaysun').read().split('\n')
+
+    """
+    for each string in the list of strings do one of two things
+    if the string == '', then remove it from the list
+    else replace the string with json.loads(string)
+
+    The catch to remove '' is because there is a trailing newline, example:
+    >>> string = 'a b c '
+    >>> split(string)
+    ['a', 'b', 'c', '']
+    """
+    list_of_objects = [json.loads(string) for string in list_of_strings if string != '']
+
+    return list_of_objects
+
+
+def get_timestamp_diff(obj):
+    return obj['time'] - int(obj['timestamp'], 16)
+
+
+def q1a(objs):
+    return get_timestamp_diff(objs[0])
+
+
+def q1b(objs):
+    # python treats array indices as if the array is wrapped around in a circle
+    # so, 0 is the first thing, 1 is the second, and -1 is the last
+    return get_timestamp_diff(objs[-1])
+
+
+def q1c(objs):
+    total = 0
+    for obj in objs:
+        total += get_timestamp_diff(obj)
+    return total
+
+
+def q2(objs):
+    board_counts = {}
+
+    for obj in objs:
+        bid = obj['board_id']
+        if bid in board_counts:
+            board_counts[bid] += 1
+        else:
+            board_counts[bid] = 1
+
+    winning_board = max(board_counts)
+    # returning two values:
+    return winning_board, board_counts[winning_board]
+
+
+def q3(objs):
+    original_hash = objs[1]['hash']
+
+    reversed_words_hash = ''
+
+    for i in xrange(0, 8):
+        start = 64 - (i + 1) * 8
+        end = 64 - i * 8
+        reversed_words_hash += original_hash[start:end]
+
+    return original_hash, reversed_words_hash
+
+main()
