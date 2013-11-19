@@ -44,10 +44,9 @@ def q3():
         line = f.readline()
         j = json.loads(line)
         string = j['hash']
-        print string
     for i in range(8, -1, -1):
-        print i * 8,  (i + 1) * 8
-        print string[i * 8: (i + 1) * 8]
+        #print i * 8,  (i + 1) * 8
+        #print string[i * 8: (i + 1) * 8]
         fin += string[i * 8: (i + 1) * 8]
     return fin
 
