@@ -1,7 +1,7 @@
 import json
 
 def main():
-    with open('euler18tri', 'r') as f: 
+    with open('euler67tri', 'r') as f: 
         mxtot = -1
         last = -1 
         for line in f:  
@@ -9,8 +9,6 @@ def main():
             if last == -1:
                 last = next
             else:
-                print last
-                print next
                 for i in xrange(len(next)):
                     if i == 0:
                         next[i] = int(next[i]) + int(last[i])

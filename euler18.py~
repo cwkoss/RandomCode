@@ -9,8 +9,6 @@ def main():
             if last == -1:
                 last = next
             else:
-                print last
-                print next
                 for i in xrange(len(next)):
                     if i == 0:
                         next[i] = int(next[i]) + int(last[i])
@@ -22,5 +20,6 @@ def main():
                 print next
                 print " "
                 last = next
+    print "Max is " + str(mxtot)
 
 main()
