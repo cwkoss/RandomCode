@@ -1,0 +1,32 @@
+history = {"1": 1}
+def main():
+    mx = -1
+    mxi = "1"
+    for i in xrange(2, 1000000):
+        if str(i) in history:
+            print str(i) + " already in history. value is " + str(history[str(i)])
+        else:
+            print str(i) + " returns " + str(getlength(i))
+        if history[str(i)] > mx:
+            mx = history[str(i)]
+            mxi = i
+        #print history
+    print "maximum is : " + str(mx) + " from " + str(mxi)
+
+def nextnum(n):
+    if n % 2 == 0:
+        return n/2
+    else:
+        return 3 * n + 1
+
+def getlength(n):
+    if str(nextnum(n)) in history:
+        fin = history[str(nextnum(n))] + 1
+    else:
+        fin = getlength(nextnum(n)) + 1
+
+    history[str(n)] = fin
+    return fin
+
+
+main()
