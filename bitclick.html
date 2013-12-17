@@ -1,0 +1,322 @@
+<html>
+<head>
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.3/jquery.min.js"></script>
+<style>
+td {
+	border: 1px black solid;
+	padding:2px;
+}
+th {
+	border: 2px black solid;
+}
+
+
+div {
+	padding:10px;
+}
+
+#mainbox {
+	border: 1px black solid;
+	padding: 10px;
+}
+
+#leftcol {
+	width: 300px;
+	float: left;
+}
+#rightcol {
+	width: 500px;
+	float: left;
+	height:100%;
+}
+
+#news {
+	height: 150px;
+	border: 1px black solid;
+	width: 100%;
+	float: left;
+}
+
+#newstitle {
+	border-bottom: 1px black solid;
+	text-align: center;
+}
+
+#communities {
+	float:left;
+}
+
+#rigs {
+	border: 1px black solid;
+	width:100%;
+	height: 300px;
+}
+
+#rigtitle {
+	border-bottom: 1px black solid;
+	text-align: center;
+}
+
+</style>
+
+
+<script>
+paused = false;
+world = new World();
+upspeed = 60 * 1000; //ms added each frame
+framesPerUpdate = 30;  //how many reqAminFrames per world update
+framecount = 0;
+
+
+
+miningrigs = [];
+
+communityproto = ["Programming", "Cryptography", "Security", "Libertarian", "Bitcoin", "Bitcoin Trading", "Total"];
+communities = [];
+
+//manages time, handles pausing, holds tick and calls update and render
+function main(){
+	if(framecount % framesPerUpdate == 0) {
+
+		console.log("main");
+
+		update();
+		render();
+		framecount = 0;
+	}
+	framecount++;
+
+	if(paused == false){
+		requestAnimFrame(main);
+	}
+}
+
+
+//moves every object in the world once per frame
+function update(){
+	world.update();
+}
+// draws all the objects after being updated
+function render(ctx) {
+	$("#day").html("Day: " + new Date(world.currtime));	
+	$("#diff").html("Difficulty: " + world.diff);
+	$("#myhash").html("My Hashrate: " + world.myhashrate.toFixed(2) + " MH/s");
+	$("#myusd").html("My USD: $" + world.myusd.toFixed(2));
+	$("#mybtc").html("My BTC: B" + world.mybtc.toFixed(2));
+	$("#globalhash").html("Global Hashrate: " + world.globalhashrate.toFixed(2) + " MH/s");
+	$("#shares").html("Total Shares Earned: " + Math.floor(world.shares));
+
+	rigstr = "<table><tr><td>Rig Name</td><td>Hashrate</td><td>Price</td><td>Owned</td><td>Buy</td></tr>";
+	for(var key in miningrigs) {
+		rigstr += "<tr><td>" + miningrigs[key]['label'] + "</td>";
+		rigstr += "<td>" + miningrigs[key]['hashrate'] + "</td>";
+		rigstr += "<td>$" + miningrigs[key]['price'] + "</td>";
+		rigstr += "<td>" + miningrigs[key]['owned'] + "</td>";
+		rigstr += "<td><input type='button' value='Buy' onclick='miningrigs[" + key + "].buy()'></td></tr>";
+	}
+	rigstr += "</table>";
+	$("#rigbox").html(rigstr);
+
+
+	//bug to fix - if Post button is redrawn while clicked, does not call function
+	commstr = "<table><tr><th>Online Communities</th><th>Make a Post</th><th>Total Posts</th><th>Aware</th><th>Users</th><th>Believers</th></tr>";
+
+
+	for(var i in communities) {
+		commstr += "<tr><td>" + communities[i]['label'] + "</td>";
+		commstr += "<td><input type='button' value='post' onclick='communities[" + communities[i]['index'] + "].post();'></td>";
+		commstr += "<td>" + communities[i]['totalposts'] + "</td>";
+		commstr += "<td>" + communities[i]['aware'] + "</td>";
+		commstr += "<td>" + communities[i]['users'] + "</td>";
+		commstr += "<td>" + communities[i]['believers'] + "</td></tr>";
+	}
+	commstr += "</table>"
+	$("#communities").html(commstr);
+
+
+}
+// gets everything started up. 
+function init() {
+
+	for(var i = 0; i < communityproto.length; i++){
+		communities[i] = new Community(communityproto[i], i);
+	}
+
+	miningrigs.push(new MiningRig("Pentium III", "0.39", "100"));
+	miningrigs.push(new MiningRig("Quadcore", "1.13", "250"));
+	miningrigs.push(new MiningRig("Basic GPU", "100", "500"));
+	miningrigs.push(new MiningRig("Radeon 9990", "700", "1000"));
+
+
+	main();
+}
+
+function pause() {
+	if (paused) {
+		paused = false;
+		main();
+	}
+	else {
+		paused = true;
+	}
+}
+
+function World() {
+	this.currtime = new Date("1/3/2009");
+	this.diff = 1;
+	this.othershashrate = 1;
+	this.myhashrate = 0;
+	this.sharespersec;
+	this.shares = 0;
+	this.totalusers = 0;
+	this.totalbelievers = 0;
+	this.otheravghashrate = 0.5; //in MH/s
+	this.myusd = 99999;
+	this.mybtc = 0;
+
+	this.update = function() {
+		this.lasttime = this.currtime;
+		this.currtime= new Date(upspeed + this.currtime.getTime());
+		this.updateMyHash();
+
+
+		this.totalusers = 0;
+		this.totalbelievers = 0;
+
+		for (var i in communities) {
+			this.totalusers += communities[i]['users'];
+			this.totalbelievers += communities[i]['believers'];			
+		}
+
+		this.othershashrate = (this.totalusers + this.totalbelievers) * this.otheravghashrate;
+
+		this.globalhashrate = this.myhashrate + this.othershashrate;
+
+
+		this.sharespersec = (this.myhashrate * Math.pow(10,6)) / (Math.pow(2, 32));// / this.diff); for blocks
+		this.shares += this.sharespersec * upspeed / 1000;
+
+		
+		this.mybtc = Math.floor(this.shares) * 50;
+
+	} 
+
+	this.updateMyHash= function(){
+		this.myhashrate = 0;
+		for(var key in miningrigs) {
+			this.myhashrate += miningrigs[key]['hashrate'] * miningrigs[key]['owned'];
+		}
+	}
+
+}
+
+
+upchance = {"aware": 0.2, "users": 0.1, "believers": 0.05};// chance to be upgraded TO this level
+downchance = {"aware": 0.01, "users": 0.01, "believers":0.01}; // chance to be downgraded FROM this level
+
+function Community(label, index) {
+	this.label = label;
+	this.totalposts = 0;
+	this.aware = 0;
+	this.users = 0;
+	this.believers = 0;
+	this.index = index;
+
+	this.post = function(){
+		this.totalposts++;
+		this.tryUpgrade();
+	}
+
+	this.tryUpgrade = function() {
+		var lastkey = "";
+		for(var key in upchance) {
+			if(lastkey == "" || this[lastkey] != 0){
+				if((this[key] + 1) * upchance[key] > Math.random()) {
+					this[key]++;
+					if(lastkey != "") {
+						this[lastkey]--;
+					}
+				}
+			}
+			lastkey = key;
+		}
+	}
+}
+
+function MiningRig(label, hashrate, price) {
+	this.label = label;
+	this.hashrate = hashrate;
+	this.price = price;
+	this.owned = 0;
+
+	this.buy = function() {
+		if(world.myusd >= this.price) {
+			world.myusd -= this.price;
+			this.owned++;
+		}
+	}
+}
+
+
+
+window.requestAnimFrame = (function() {
+	return window.requestAnimationFrame ||
+	window.webkitAnimationFrame ||
+	window.mozRequestAnimationFrame ||
+	window.oRequestAnimationFrame ||
+	window.msRequestAnimationFrame ||
+	function(init, element) {
+		window.setTimeout(callback, 1000/60);
+	};
+})();
+
+
+//window.requestAnimFrame(main);
+
+</script>
+</head>
+<body onload="init();">
+
+<div id="leftcol">
+
+	<div id="mainbox">
+		<div id="day"></div>
+		<div id="diff"></div>
+		<div id="globalhash"></div>
+	</div>
+
+	<div id="mybox">
+		<div id="myhash"></div>
+		<div id="myusd"></div>
+		<div id="mybtc"></div>
+		<div id="shares"></div>		
+	</div>
+
+	<div id="rigs">
+		<div id="rigtitle">
+			Mining Rigs
+		</div>
+		<div id="rigbox">
+			<input type="button" onclick="buy()" value="buy">
+		</div>
+	</div>
+
+</div>
+
+<div id="rightcol">
+	<div id="news">
+		<div id="newstitle">
+			News
+		</div>
+		<div id="newsbox">
+		</div>
+	</div>
+	<div id="communities">
+	</div>
+</div>
+
+<input type="button" onclick="pause()" value="pause">
+<input type="button" onclick="init()" value="init">
+
+</body>
+</html>
