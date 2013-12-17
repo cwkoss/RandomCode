@@ -63,7 +63,7 @@ div {
 <script>
 paused = false;
 world = new World();
-upspeed = 60 * 1000; //ms added each frame
+upspeed = 24 * 60 * 60 * 1000; //ms added each frame
 framesPerUpdate = 30;  //how many reqAminFrames per world update
 framecount = 0;
 
@@ -78,7 +78,7 @@ communities = [];
 function main(){
 	if(framecount % framesPerUpdate == 0) {
 
-		console.log("main");
+		//console.log("main");
 
 		update();
 		render();
@@ -99,12 +99,19 @@ function update(){
 // draws all the objects after being updated
 function render(ctx) {
 	$("#day").html("Day: " + new Date(world.currtime));	
+	$("#blockdepth").html("Current Block: " + world.blockdepth);
 	$("#diff").html("Difficulty: " + world.diff);
+	$("#globalhash").html("Global Hashrate: " + world.globalhashrate.toFixed(2) + " MH/s");
+	$("#avgblocktime").html("Avg Block Time: " + displaySecs(1/world.globalblockrate));	
+
 	$("#myhash").html("My Hashrate: " + world.myhashrate.toFixed(2) + " MH/s");
 	$("#myusd").html("My USD: $" + world.myusd.toFixed(2));
 	$("#mybtc").html("My BTC: B" + world.mybtc.toFixed(2));
-	$("#globalhash").html("Global Hashrate: " + world.globalhashrate.toFixed(2) + " MH/s");
-	$("#shares").html("Total Shares Earned: " + Math.floor(world.shares));
+	$("#blocks").html("Total Blocks Earned: " + Math.floor(world.blocks));
+
+	var blocktime = 1/world.blockspersec;
+	$("#blocktime").html("Expected Time to Block: " + displaySecs(blocktime));
+	$("#networkpercent").html("Network %: " + world.networkpercent.toFixed(2));
 
 	rigstr = "<table><tr><td>Rig Name</td><td>Hashrate</td><td>Price</td><td>Owned</td><td>Buy</td></tr>";
 	for(var key in miningrigs) {
@@ -166,13 +173,18 @@ function World() {
 	this.diff = 1;
 	this.othershashrate = 1;
 	this.myhashrate = 0;
-	this.sharespersec;
-	this.shares = 0;
+	this.blockspersec;
+	this.blocks = 1; //how many blocks you have found
+	this.blockdepth = 1; //total number of blocks in blockchain
 	this.totalusers = 0;
 	this.totalbelievers = 0;
-	this.otheravghashrate = 0.5; //in MH/s
+	this.otheravghashrate = 110.5; //in MH/s
 	this.myusd = 99999;
 	this.mybtc = 0;
+	this.lastdiffchange = 1;
+	this.lastdifftime = this.currtime;
+	this.globalblockrate = 0;
+	this.networkpercent = 0;
 
 	this.update = function() {
 		this.lasttime = this.currtime;
@@ -193,11 +205,19 @@ function World() {
 		this.globalhashrate = this.myhashrate + this.othershashrate;
 
 
-		this.sharespersec = (this.myhashrate * Math.pow(10,6)) / (Math.pow(2, 32));// / this.diff); for blocks
-		this.shares += this.sharespersec * upspeed / 1000;
-
+		this.blockspersec = this.blocksPerSec(this.myhashrate);
+		this.globalblockrate = this.blocksPerSec(this.globalhashrate);
 		
-		this.mybtc = Math.floor(this.shares) * 50;
+		var foundthisround = this.tryFindBlock(this.myhashrate, upspeed / 1000);
+		this.blocks += foundthisround;
+		foundthisround += this.tryFindBlock(this.othershashrate, upspeed / 1000);
+		this.blockdepth += foundthisround;
+
+		this.updateDiff();
+
+		this.networkpercent = 100 * this.myhashrate / Math.max(1, this.globalhashrate);
+
+		this.mybtc = Math.floor(this.blocks) * 50;
 
 	} 
 
@@ -208,11 +228,32 @@ function World() {
 		}
 	}
 
+	this.tryFindBlock = function(hashrate, timeint) {
+		var lambda = timeint * this.blocksPerSec(hashrate);
+		var found = randPoisson(lambda);
+		return found;
+
+	}
+
+	this.blocksPerSec = function(hashrate) {
+		return (hashrate * Math.pow(10,6)) / (Math.pow(2, 32) * this.diff);
+	}
+
+	this.updateDiff = function() {
+		if(this.blockdepth - this.lastdiffchange > 2016) {
+			this.lastdiffchange += 2016;
+			console.log([(this.currtime - this.lastdifftime) / 1000 / 60 / 60 / 24, (14 * 24 * 60 * 60 * 1000) / (this.currtime - this.lastdifftime)]);
+			this.diff = Math.max(1, this.diff * (14 * 24 * 60 * 60 * 1000) / (this.currtime - this.lastdifftime));
+			this.lastdifftime = this.currtime;
+		}
+	}
+
 }
 
 
-upchance = {"aware": 0.2, "users": 0.1, "believers": 0.05};// chance to be upgraded TO this level
-downchance = {"aware": 0.01, "users": 0.01, "believers":0.01}; // chance to be downgraded FROM this level
+upchance = {"aware": 0.2, "users": 0.1, "believers": 0.05};// chance to be upgraded TO this level on POST
+downchance = {"aware": 0.01, "users": 0.01, "believers":0.01}; // chance to be downgraded FROM this level each 24 Hours
+postchance = {"aware": 0.01, "users": 0.1, "believers": 0.2}; // chance for each kind of user to make a post in 24 Hour period
 
 function Community(label, index) {
 	this.label = label;
@@ -258,6 +299,42 @@ function MiningRig(label, hashrate, price) {
 }
 
 
+function randPoisson(lambda) {
+  var L = Math.exp(-lambda);
+  var p = 1;
+  var k = 0;
+  while (true) {
+    p *= Math.random();
+    if (p <= L) {
+      return k;
+    }
+    k++;
+  }
+}
+
+function displaySecs(s) {
+
+	if(s != Infinity) {
+
+		var finstr = "";
+		if(s >= 3600) {
+			finstr +=  Math.floor(s / 3600) + "h ";
+		}
+		if(s >= 60) {
+			finstr += Math.floor((s % 3600) / 60) + "m ";
+		}
+		if(s >= 10) {
+			finstr += Math.floor(s % 60) + "s";
+		} else {
+			finstr += s.toFixed(2) + "s";
+		}
+		return finstr;
+		
+	} else {
+		return "Infinity";
+	}
+}
+
 
 window.requestAnimFrame = (function() {
 	return window.requestAnimationFrame ||
@@ -280,16 +357,22 @@ window.requestAnimFrame = (function() {
 <div id="leftcol">
 
 	<div id="mainbox">
+		Bitcoin Network
 		<div id="day"></div>
+		<div id="blockdepth"></div>
 		<div id="diff"></div>
 		<div id="globalhash"></div>
+		<div id="avgblocktime"></div>
 	</div>
 
 	<div id="mybox">
+		You
 		<div id="myhash"></div>
 		<div id="myusd"></div>
 		<div id="mybtc"></div>
-		<div id="shares"></div>		
+		<div id="blocks"></div>	
+		<div id="blocktime"></div>	
+		<div id="networkpercent"></div>
 	</div>
 
 	<div id="rigs">
